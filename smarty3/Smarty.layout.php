@@ -36,7 +36,7 @@ class SmartyLayout extends Smarty{
 		}
 	}
 	
-	public function fetchfetch($template, $cache_id = null, $compile_id = null, $parent = null, $display = false){
+	public function fetch($template, $cache_id = null, $compile_id = null, $parent = null, $display = false){
 		if(!$display)
 			$this->_render();
 		return parent::fetch($template, $cache_id, $compile_id, $parent, $display);
