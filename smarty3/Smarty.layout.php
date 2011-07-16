@@ -13,8 +13,8 @@ class SmartyLayout extends Smarty{
 		<%/block%>
 		 ...
 	*/
-	protected $_part;   //存放layout的每个部分
 	protected $_layout; //存放当前layout
+	protected $_la_path;   //存放layout到module的路径，每次添加模块用
 	protected $_page_struct = array();
 	protected $_data;
 	protected $_open_setter = true;
@@ -36,7 +36,7 @@ class SmartyLayout extends Smarty{
 		}
 	}
 	
-	public function fetchfetch($template, $cache_id = null, $compile_id = null, $parent = null, $display = false){
+	public function fetch($template, $cache_id = null, $compile_id = null, $parent = null, $display = false){
 		if(!$display)
 			$this->_render();
 		return parent::fetch($template, $cache_id, $compile_id, $parent, $display);
@@ -91,7 +91,7 @@ class SmartyLayout extends Smarty{
 		@param $name : 加载的模块名字，根据名字和对应规则去查找模块
 
 		Layout add 对象的时候有个$name的优先级查找规则
-		首先查找layout目录下指定的layout或者module
+		首先查找当前layout目录下指定的layout或者module
 		接着查找app的views目录下指定的layout或者module
 		
 		$this->Main->add("test", array(...));
@@ -101,18 +101,18 @@ class SmartyLayout extends Smarty{
 	 */
 	protected function add($name, $value, $type='module'){
 		
-		if(!isSet($this->_part)){
+		if(!isSet($this->_la_path)){
 			throw new Exception('you must spicified a part of layout!');
 		}
 		
 		$module = $this->_add($name, $value, $type); //要add的模块
 		
-		//print_r(array($this->_part, $name, $value));
-		//layout可能级联，所以_part要explode
+		//print_r(array($this->_la_path, $name, $value));
+		//layout可能级联，所以_la_path要explode
 		/*
-			_part的结构为 LayoutPart(.layout_name::LayoutPart)*
+			_la_path的结构为 LayoutPart(.layout_name::LayoutPart)*
 		 */
-		$parts = explode(' ',$this->_part); //模块前面的部分
+		$parts = explode(' ',$this->_la_path); //模块前面的部分
 		$count = count($parts);
 
 		$page_struct = &$this->_page_struct;
@@ -181,7 +181,7 @@ class SmartyLayout extends Smarty{
 	
 	/**
 	 * 支持一种简单的写法
-	 * $this->{'LayoutA layout_b.PartB module'} = array(...);
+	 * $this->{'PartA layout_b.PartB module'} = array(...);
 	 */
 	public function __set($key, $value){
 		$key = preg_replace('/^\./','',$key); //可以以::开头，表示省略当前layout名
@@ -191,7 +191,7 @@ class SmartyLayout extends Smarty{
 		}else if(count($tokens) >= 2){
 			$name = array_pop($tokens);
 			$tokens = preg_replace('/^\./','',$tokens);
-			$this->_part = $this->_layout.'.'.strtolower(join(' ', $tokens)); //补全前面的layout名
+			$this->_la_path = $this->_layout.'.'.strtolower(join(' ', $tokens)); //补全前面的layout名
 
 			$this->add($name, $value);
 		}	
@@ -201,19 +201,19 @@ class SmartyLayout extends Smarty{
 		magic方法
 		$this->a->render();  //按名为a的layout渲染
 		$this->Layout->add();
-		$this->{Layout1 layout_2.Part2}->add();
+		$this->{Part1 layout_2.Part2}->add();
 		...
 	 */
 	public function  & __get($key){
 		$key = preg_replace('/^\./','',$key); //可以以.开头，表示省略当前layout名
 		if(preg_match('/^[A-Z]/',$key)){ //大写字母开头，默认为layout的部分，在模板中的变量为 $layout.layout_$key小写
-			$this->_part = $this->_layout.'.'.strtolower($key); //补全前面的layout名
+			$this->_la_path = $this->_layout.'.'.strtolower($key); //补全前面的layout名
 		}
 		else{ //是layout处理器的名字
 			$this->_layout = $key;
 		}
 		
-		$this->_part = strtolower($key);
+		$this->_la_path = strtolower($key);
 
 		return $this;
 	}
@@ -226,7 +226,7 @@ class SmartyLayout extends Smarty{
 	 */
 	protected function css($name){
 		$file = $this->find_css($name);
-		$this->{"Css.{$name}"} = array('src' => $file);
+		$this->{"Css {$name}"} = array('src' => $file);
 	}
 
 	/**
@@ -236,7 +236,7 @@ class SmartyLayout extends Smarty{
 	 */
 	protected function js($name, $header = TRUE){
 		$file = $this->find_js($name);
-		if($header) $this->{"Js_header.{$name}"} = array('src' => $file);
-		else $this->{"Js_footer.{$name}"} = array('src' => $file);
+		if($header) $this->{"Js_header {$name}"} = array('src' => $file);
+		else $this->{"Js_footer {$name}"} = array('src' => $file);
 	}
 }
