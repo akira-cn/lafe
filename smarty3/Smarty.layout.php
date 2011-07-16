@@ -17,7 +17,6 @@ class SmartyLayout extends Smarty{
 	protected $_la_path;   //存放layout到module的路径，每次添加模块用
 	protected $_page_struct = array();
 	protected $_data;
-	protected $_open_setter = true;
 
 	function __construct(){
 		parent::__construct();
