@@ -13,54 +13,114 @@ class SmartyLayout extends Smarty{
 		<%/block%>
 		 ...
 	*/
-	protected $_layout; //存放当前layout
-	protected $_la_path;   //存放layout到module的路径，每次添加模块用
-	protected $_page_struct = array();
-	protected $_data;
+	protected $_la_layout; //存放当前layout
+	protected $_la_path;   //存放layout到module的层级，每次添加模块用
 
-	function __construct(){
+	protected $_la_page_struct = array(); //存放render之后的结构化数据，包含了模板构建所需要的全部信息和模块用到的数据
+
+	protected $_la_data;
+	
+	//Smarty渲染用的配置
+	protected $_la_template;		//存放初始化的模板
+
+	/*
+		存放查找模板文件的dir路径
+		如果在系统默认的两个路径上找不到模板文件
+		系统会在这个数组所存路径的{$type}下依次查找
+		直到查找到文件所在位置为止
+		注意，设置的文件路径优先级低于应用模板当前路径，高于系统路径
+	*/
+	protected $_la_find_dirs = array();
+
+	function __construct($data=NULL){
+		$this->_la_data = $data;	//渲染前传递给layout_func的数据
 		parent::__construct();
 	}
+	
+	/**
+		为tpl增加一个查找目录，当在当前应用的模板文件目录下查找不到文件的时候
+		会去添加的目录中依次查找
+		eg: $this->add_dir(APPPATH."views/myapp/");
+	 */
+	public function add_dir($path){
+		array_push($this->_la_find_dirs, $path);
+	}
 
-	protected function _render($data=NULL){
-		if(isSet($this->_layout)){
-			$this->{"layout_".$this->_layout}($data);
+	/**
+	    “渲染”当前的模板
+		实际上所做的事情是将数据组织好准备传给拼合好的模块
+	 */
+	protected function _render(){
+		if(isSet($this->_la_layout)){ //如果有layout，渲染layout
+			$this->{"layout_".$this->_la_layout}($this->_la_data);
 
-			$this->_page_struct = array_pop($this->_page_struct);
+			$this->_la_page_struct = array_pop($this->_la_page_struct);
 			
-			if($this->_page_struct){
-				$this->_data = $this->_page_struct['layout'] + array('file' => $this->_page_struct['url']);
-				$this->assignGlobal('layout', $this->_data);
+			if($this->_la_page_struct){
+				$_data = $this->_la_page_struct['layout'] + array('file' => $this->_la_page_struct['url']);
+				$this->assignGlobal('layout', $_data);
 			}
-		}
+		} //如果没有，什么也不做，直接渲染模板
 	}
 	
+	/**
+		重载Samrty的fetch，render完再fetch
+	 */
 	public function fetch($template, $cache_id = null, $compile_id = null, $parent = null, $display = false){
+		$this->_la_template = $template;
 		if(!$display)
 			$this->_render();
 		return parent::fetch($template, $cache_id, $compile_id, $parent, $display);
 	}
 
+	/**
+		重载Smarty的display, render完再display
+	 */
 	public function display($template, $cache_id = null, $compile_id = null, $parent = null){
+		$this->_la_template = $template;
 		$this->_render();
 		parent::display($template, $cache_id, $compile_id, $parent);
 	}
-
+	
+	/**
+		查找指定的文件
+		根据文件名、类型、扩展名进行查找
+		会先查找当前应用的模板下面的对应类型的路径
+		找不到会查找用户定义的路径下面对应类型的路径
+		再找不到会从模板根目录进行查找
+	 */
 	protected function _find($file, $type, $ext='tpl'){
-		$file_name = explode('/', $file);
-		$file_name = $file_name[count($file_name) - 1];
-		$dir_name = dirname($file);
+		/*
+			eg: 
+				template_dir : views/
+				_la_template : sample/test.tpl 
+				_find : a/b module
 
-		$app_file = $this->template_dir."{$dir_name}/{$type}/{$file_name}".".{$ext}"; 
-		$sys_file = $this->template_dir."{$type}/{$file_name}".".{$ext}"; 
+				=> views/sample/module/a/b.tpl
+				=> views/module/a/b.tpl
+		*/
+		$tplpath = dirname($this->_la_template);
+		$subpath = "{$type}/{$file}".".{$ext}"; 
 
-		//echo file_exists($sys_file); exit();
+		//先在应用的当前路径下找
+		$fullpath = $this->template_dir."{$tplpath}/".$subpath;  
+		
+		if(!file_exists($fullpath)){
+			foreach($this->_find_dirs as $dir){
+				$fullpath = $dir.$subpath;
+				if(file_exists($fullpath)){
+					break;
+				}
+			}
+		}
 
-		if(file_exists($app_file)) return $app_file;
-		else if(file_exists($sys_file)) return $sys_file;
-		else{ 
+		//找不到去系统路径下找
+		if(!file_exists($fullpath))
+			$fullpath = $this->template_dir.$subpath; 
+		if(!file_exists($fullpath)){ 
 			throw new Exception("can't find layout files. {$sys_file} | {$app_file}");
 		}
+		return $fullpath;
 	}
 	//查找对应的模板
 	protected function find_layout($name){
@@ -106,7 +166,6 @@ class SmartyLayout extends Smarty{
 		
 		$module = $this->_add($name, $value, $type); //要add的模块
 		
-		//print_r(array($this->_la_path, $name, $value));
 		//layout可能级联，所以_la_path要explode
 		/*
 			_la_path的结构为 LayoutPart(.layout_name::LayoutPart)*
@@ -114,7 +173,7 @@ class SmartyLayout extends Smarty{
 		$parts = explode(' ',$this->_la_path); //模块前面的部分
 		$count = count($parts);
 
-		$page_struct = &$this->_page_struct;
+		$page_struct = &$this->_la_page_struct;
 
 		//寻路
 		for($i = 0; $i < $count; $i++){
@@ -171,7 +230,10 @@ class SmartyLayout extends Smarty{
 
 		return $this;	
 	}
-
+	
+	/**
+		根据name、value生成对应的module数据结构
+	 */
 	protected function _add($name, $value, $type){
 		$file = $this->_find($name, $type);
 		$module = array('url'=>$file,'data'=>$value);
@@ -179,8 +241,9 @@ class SmartyLayout extends Smarty{
 	}
 	
 	/**
-	 * 支持一种简单的写法
-	 * $this->{'PartA layout_b.PartB module'} = array(...);
+		magic方法
+		支持一种简单的写法
+		$this->{'PartA layout_b.PartB module'} = array(...);
 	 */
 	public function __set($key, $value){
 		$key = preg_replace('/^\./','',$key); //可以以::开头，表示省略当前layout名
@@ -190,7 +253,7 @@ class SmartyLayout extends Smarty{
 		}else if(count($tokens) >= 2){
 			$name = array_pop($tokens);
 			$tokens = preg_replace('/^\./','',$tokens);
-			$this->_la_path = $this->_layout.'.'.strtolower(join(' ', $tokens)); //补全前面的layout名
+			$this->_la_path = $this->_la_layout.'.'.strtolower(join(' ', $tokens)); //补全前面的layout名
 
 			$this->add($name, $value);
 		}	
@@ -198,7 +261,7 @@ class SmartyLayout extends Smarty{
 
 	/**
 		magic方法
-		$this->a->render();  //按名为a的layout渲染
+		$this->a->display();  //按名为a的layout渲染（自动调用 $layout->layout_a();
 		$this->Layout->add();
 		$this->{Part1 layout_2.Part2}->add();
 		...
@@ -206,10 +269,10 @@ class SmartyLayout extends Smarty{
 	public function  & __get($key){
 		$key = preg_replace('/^\./','',$key); //可以以.开头，表示省略当前layout名
 		if(preg_match('/^[A-Z]/',$key)){ //大写字母开头，默认为layout的部分，在模板中的变量为 $layout.layout_$key小写
-			$this->_la_path = $this->_layout.'.'.strtolower($key); //补全前面的layout名
+			$this->_la_path = $this->_la_layout.'.'.strtolower($key); //补全前面的layout名
 		}
 		else{ //是layout处理器的名字
-			$this->_layout = $key;
+			$this->_la_layout = $key;
 		}
 		
 		$this->_la_path = strtolower($key);
