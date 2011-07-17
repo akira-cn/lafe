@@ -17,11 +17,14 @@ class SmartyLayout extends Smarty{
 	protected $_la_path;   //存放layout到module的层级，每次添加模块用
 
 	protected $_la_page_struct = array(); //存放render之后的结构化数据，包含了模板构建所需要的全部信息和模块用到的数据
+	protected $_la_layout_xmap = array();
 
-	protected $_la_data;
+	protected $_la_data; //传递给layout_func用于渲染处理的变量
 	
 	//Smarty渲染用的配置
 	protected $_la_template;		//存放初始化的模板
+
+	protected $_la_space;		//用来存放layout路径的前缀
 
 	/*
 		存放查找模板文件的dir路径
@@ -52,6 +55,7 @@ class SmartyLayout extends Smarty{
 	 */
 	protected function _render(){
 		if(isSet($this->_la_layout)){ //如果有layout，渲染layout
+			$this->_la_space = $this->_la_layout;
 			$this->{"layout_".$this->_la_layout}($this->_la_data);
 
 			$this->_la_page_struct = array_pop($this->_la_page_struct);
@@ -174,6 +178,8 @@ class SmartyLayout extends Smarty{
 		$count = count($parts);
 
 		$page_struct = &$this->_la_page_struct;
+		
+		$_layout_xpath = array();
 
 		//寻路
 		for($i = 0; $i < $count; $i++){
@@ -185,6 +191,8 @@ class SmartyLayout extends Smarty{
 			$layout_file = explode('#', $layout_name);
 			$layout_id = $layout_file[1];
 			$layout_file = $layout_file[0];
+			
+			array_push($_layout_xpath, $layout_name);
 
 			$found = null;
 			foreach($page_struct as &$part_struct){
@@ -204,6 +212,9 @@ class SmartyLayout extends Smarty{
 					'id' => $layout_id,
 					'layout' => array(),
 				);
+				
+				$this->_la_layout_xmap[join(' ',$_layout_xpath)] = &$layout_info['layout'];
+
 				array_push($page_struct, &$layout_info);
 				$found = &$layout_info;
 
@@ -220,8 +231,6 @@ class SmartyLayout extends Smarty{
 			$page_struct = &$found['layout'][$layout_body];
 			
 			unset($found);	
-			
-			$path .= ' ';
 		}
 
 		array_push($page_struct, $module);
@@ -246,14 +255,13 @@ class SmartyLayout extends Smarty{
 		$this->{'PartA layout_b.PartB module'} = array(...);
 	 */
 	public function __set($key, $value){
-		$key = preg_replace('/^\./','',$key); //可以以::开头，表示省略当前layout名
 		$tokens = explode(' ',$key);
 		if(count($tokens) < 2){
 			return;
 		}else if(count($tokens) >= 2){
 			$name = array_pop($tokens);
 			$tokens = preg_replace('/^\./','',$tokens);
-			$this->_la_path = $this->_la_layout.'.'.strtolower(join(' ', $tokens)); //补全前面的layout名
+			$this->_la_path = strtolower($this->_la_space.'.'.join(' ', $tokens)); //补全前面的layout名
 
 			$this->add($name, $value);
 		}	
@@ -267,9 +275,8 @@ class SmartyLayout extends Smarty{
 		...
 	 */
 	public function  & __get($key){
-		$key = preg_replace('/^\./','',$key); //可以以.开头，表示省略当前layout名
 		if(preg_match('/^[A-Z]/',$key)){ //大写字母开头，默认为layout的部分，在模板中的变量为 $layout.layout_$key小写
-			$this->_la_path = $this->_la_layout.'.'.strtolower($key); //补全前面的layout名
+			$this->_la_path = strtolower($this->_la_space.'.'.$key); //补全前面的layout名
 		}
 		else{ //是layout处理器的名字
 			$this->_la_layout = $key;
@@ -300,5 +307,13 @@ class SmartyLayout extends Smarty{
 		$file = $this->find_js($name);
 		if($header) $this->{"Js_header {$name}"} = array('src' => $file);
 		else $this->{"Js_footer {$name}"} = array('src' => $file);
+	}
+
+	public function with($space){
+		$this->_la_space = $space;
+	}
+
+	public function endwith(){
+		$this->_la_space = $this->_la_layout;
 	}
 }

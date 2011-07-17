@@ -1,4 +1,4 @@
-<div>
+<div class="<%$layout.myclass%>" style="<%$layout.css%>">
 	<h1>I'm a layout~ (b)</h1>
 	<hr/>
 	<h2>Header</h2>
