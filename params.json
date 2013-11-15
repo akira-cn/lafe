@@ -1,0 +1,1 @@
+{"name":"Lafe","tagline":"Smaty3的扩展，前端Layout框架，用来定位和输出数据到复杂的页面模块组合中","body":"LAFE 是一个基于Smarty3 http://www.smarty.net 的简单扩展\r\n\r\n她抽象了一个 Layout 层，对前端的布局和页面模块进行统一的管理\r\n\r\nLAFE做的事情是对模块和Layout资源进行统一管理和自动加载\r\n\r\n并且利用一种简单的路径DSL，把数据准确映射到对应的模块中去\r\n\r\n<hr/>","google":"","note":"Don't delete this file! It's used internally to help with page regeneration."}
