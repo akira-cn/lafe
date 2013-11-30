@@ -1,3 +1,5 @@
+## LAFE
+
 LAFE 是一个基于Smarty3 http://www.smarty.net 的简单扩展
 
 她抽象了一个 Layout 层，对前端的布局和页面模块进行统一的管理
