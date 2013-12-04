@@ -9,3 +9,5 @@ LAFE做的事情是对模块和Layout资源进行统一管理和自动加载
 并且利用一种简单的路径DSL，把数据准确映射到对应的模块中去
 
 <iframe width="100%" height="300" src="http://jsfiddle.net/36Qsf/embedded/" allowfullscreen="allowfullscreen" frameborder="0"></iframe>
+
+<a class="jsbin-embed" href="http://jsbin.com/OweFOcI/1/embed?html,output">JS Bin</a><script src="http://static.jsbin.com/js/embed.js"></script>
