@@ -8,4 +8,4 @@ LAFE做的事情是对模块和Layout资源进行统一管理和自动加载
 
 并且利用一种简单的路径DSL，把数据准确映射到对应的模块中去
 
-<script>alert(1)</script>
+<div id="abc">xxx</div>
