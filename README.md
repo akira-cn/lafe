@@ -13,3 +13,11 @@ LAFE做的事情是对模块和Layout资源进行统一管理和自动加载
 ```js
 var test = true;
 ```
+
+<div>
+<textarea>
+```js
+var test = true;
+```
+</textarea>
+</div>
